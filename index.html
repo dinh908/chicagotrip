@@ -24,14 +24,13 @@
             }
         }
         const firebaseConfig = {
-            // Thay bằng cấu hình Firebase của bạn
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            databaseURL: "YOUR_DATABASE_URL",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyAet3_fKf2Vfg17g-hwPs5-aQCCSKWm9uM",
+            authDomain: "test1-7cbd0.firebaseapp.com",
+            databaseURL: "https://test1-7cbd0-default-rtdb.firebaseio.com",
+            projectId: "test1-7cbd0",
+            storageBucket: "test1-7cbd0.firebasestorage.app",
+            messagingSenderId: "62319656972",
+            appId: "1:62319656972:web:c3d3c0bccd33ea5296ae29"
         };
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
@@ -281,7 +280,7 @@
                         const funding = this.memberFunding[index];
                         const expenses = this.memberExpenses[index];
                         const sharedExpenses = this.transactions
-                            .filter(t => t.type === 'expense' && t.participants.includes(index))
+                            .filter(t => t.type === 'expense' && t.participants && t.participants.includes(index))
                             .reduce((sum, t) => {
                                 const share = t.amount / t.participants.length;
                                 return sum + share;
@@ -337,6 +336,7 @@
                         })
                         .catch(error => {
                             this.loginError = 'Sai email hoặc mật khẩu';
+                            console.error('Login error:', error);
                         });
                 },
                 logout() {
@@ -353,6 +353,8 @@
                             this.members = data.members || [];
                             this.transactions = data.transactions || [];
                         }
+                    }).catch(error => {
+                        console.error('Load data error:', error);
                     });
                 },
                 saveData() {
@@ -360,6 +362,8 @@
                         database.ref('groupData').set({
                             members: this.members,
                             transactions: this.transactions
+                        }).catch(error => {
+                            console.error('Save data error:', error);
                         });
                     }
                 },
@@ -385,7 +389,7 @@
                     this.members.splice(index, 1);
                     this.transactions = this.transactions.filter(t => {
                         if (t.type === 'expense') {
-                            return t.member !== index && !t.participants.includes(index);
+                            return t.member !== index && (!t.participants || !t.participants.includes(index));
                         }
                         return t.member !== index;
                     });
@@ -401,7 +405,7 @@
                         type: 'funding',
                         member: this.funding.member,
                         amount: this.funding.amount,
-                        timestamp: new Date(),
+                        timestamp: new Date().toISOString(),
                         description: 'Nạp quỹ',
                         admin: auth.currentUser.email
                     });
@@ -420,7 +424,7 @@
                         amount: this.expense.amount,
                         description: this.expense.description,
                         participants: [...this.expense.participants],
-                        timestamp: new Date(),
+                        timestamp: new Date().toISOString(),
                         admin: auth.currentUser.email
                     });
                     this.expense = { payer: '', amount: 0, description: '', participants: [] };
@@ -453,11 +457,11 @@
                     const report = this.transactions.map(t => ({
                         'Thời gian': this.formatDate(t.timestamp),
                         'Loại': t.type === 'funding' ? 'Nạp quỹ' : 'Chi tiêu',
-                        'Người thực hiện': this.members[t.member].name,
+                        'Người thực hiện': this.members[t.member] ? this.members[t.member].name : 'Unknown',
                         'Mô tả': t.description || 'Không có mô tả',
                         'Admin thêm': t.admin || '-',
                         'Số tiền': this.formatCurrency(t.amount),
-                        'Người tham gia': t.participants ? t.participants.map(i => this.members[i].name).join(', ') : '-'
+                        'Người tham gia': t.participants ? t.participants.map(i => this.members[i] ? this.members[i].name : 'Unknown').join(', ') : '-'
                     }));
                     const ws = XLSX.utils.json_to_sheet(report);
                     const wb = XLSX.utils.book_new();
