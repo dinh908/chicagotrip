@@ -22,7 +22,7 @@
                     }
                 }
             }
-        }
+        };
         const firebaseConfig = {
             apiKey: "AIzaSyAet3_fKf2Vfg17g-hwPs5-aQCCSKWm9uM",
             authDomain: "test1-7cbd0.firebaseapp.com",
@@ -32,6 +32,7 @@
             messagingSenderId: "62319656972",
             appId: "1:62319656972:web:c3d3c0bccd33ea5296ae29"
         };
+        // Khởi tạo Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const database = firebase.database();
@@ -153,7 +154,7 @@
                                     {{ transaction.type === 'funding' ? 'Nạp quỹ' : 'Chi tiêu' }}
                                 </span>
                             </td>
-                            <td class="px-4 py-2">{{ members[transaction.member].name }}</td>
+                            <td class="px-4 py-2">{{ members[transaction.member] ? members[transaction.member].name : 'Unknown' }}</td>
                             <td class="px-4 py-2">{{ transaction.description || 'Không có mô tả' }}</td>
                             <td class="px-4 py-2">{{ transaction.admin || '-' }}</td>
                             <td class="px-4 py-2 text-right font-medium" :class="{'text-green-600': transaction.type === 'funding', 'text-red-600': transaction.type === 'expense'}">
@@ -224,7 +225,7 @@
                     <ul class="space-y-2">
                         <li v-for="(suggestion, index) in settlementSuggestions" :key="index" class="flex items-center">
                             <i class="fas fa-exchange-alt text-blue-500 mr-2"></i>
-                            <span>{{ members[suggestion.from].name }} nên trả {{ formatCurrency(suggestion.amount) }} cho {{ members[suggestion.to].name }}</span>
+                            <span>{{ members[suggestion.from] ? members[suggestion.from].name : 'Unknown' }} nên trả {{ formatCurrency(suggestion.amount) }} cho {{ members[suggestion.to] ? members[suggestion.to].name : 'Unknown' }}</span>
                         </li>
                     </ul>
                 </div>
@@ -328,6 +329,10 @@
             },
             methods: {
                 login() {
+                    if (!this.loginEmail || !this.loginPassword) {
+                        this.loginError = 'Vui lòng nhập email và mật khẩu';
+                        return;
+                    }
                     auth.signInWithEmailAndPassword(this.loginEmail, this.loginPassword)
                         .then(() => {
                             this.isLoggedIn = true;
@@ -335,8 +340,16 @@
                             this.loadData();
                         })
                         .catch(error => {
-                            this.loginError = 'Sai email hoặc mật khẩu';
                             console.error('Login error:', error);
+                            if (error.code === 'auth/invalid-email') {
+                                this.loginError = 'Email không hợp lệ';
+                            } else if (error.code === 'auth/wrong-password') {
+                                this.loginError = 'Sai mật khẩu';
+                            } else if (error.code === 'auth/user-not-found') {
+                                this.loginError = 'Tài khoản không tồn tại';
+                            } else {
+                                this.loginError = 'Đăng nhập thất bại: ' + error.message;
+                            }
                         });
                 },
                 logout() {
@@ -344,6 +357,8 @@
                         this.isLoggedIn = false;
                         this.members = [];
                         this.transactions = [];
+                    }).catch(error => {
+                        console.error('Logout error:', error);
                     });
                 },
                 loadData() {
